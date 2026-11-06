@@ -1,0 +1,5 @@
+# Metabase binary and local runtime data
+/metabase.jar
+/metabase-data/
+*.mv.db
+*.trace.db

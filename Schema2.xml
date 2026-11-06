@@ -1,0 +1,148 @@
+<Schema name="EcommerceDW">
+  <Dimension type="TimeDimension" visible="true" name="date">
+    <Hierarchy name="Calendrier" visible="true" hasAll="true" primaryKey="id_date">
+      <Table name="dim_date"/>
+      <Level name="Annee" column="annees" type="Numeric" uniqueMembers="true" levelType="TimeYears"/>
+      <Level name="Trimestre" column="trimestre" type="Numeric" uniqueMembers="false" levelType="TimeQuarters"/>
+      <Level name="Mois" column="mois" type="Numeric" uniqueMembers="false" levelType="TimeMonths" captionColumn="nom_mois"/>
+      <Level name="Jour" column="id_date" type="Numeric" uniqueMembers="true" levelType="TimeDays" captionColumn="date_complete"/>
+    </Hierarchy>
+  </Dimension>
+  <Dimension type="StandardDimension" visible="true" name="clients">
+    <Hierarchy name="GeographieClient" visible="true" hasAll="true" primaryKey="id_utilisateur">
+      <Join leftKey="id_geographie" rightKey="id_geographie">
+        <Table name="dim_client"/>
+        <Table name="dim_geographie"/>
+      </Join>
+      <Level name="Pays" table="dim_geographie" column="pays" uniqueMembers="true"/>
+      <Level name="Region" table="dim_geographie" column="region" uniqueMembers="false"/>
+      <Level name="Ville" table="dim_geographie" column="ville" uniqueMembers="false"/>
+      <Level name="Client" table="dim_client" column="id_utilisateur" type="Numeric" uniqueMembers="true"/>
+    </Hierarchy>
+    <Hierarchy name="ProfilClient" visible="true" hasAll="true" primaryKey="id_utilisateur">
+      <Table name="dim_client"/>
+      <Level name="Genre" column="genre" uniqueMembers="false"/>
+      <Level name="TrancheAge" column="tranche_age" uniqueMembers="false"/>
+      <Level name="Client" column="id_utilisateur" type="Numeric" uniqueMembers="true"/>
+    </Hierarchy>
+  </Dimension>
+  <Dimension type="StandardDimension" visible="true" name="produits">
+    <Hierarchy name="Catalogue" visible="true" hasAll="true" primaryKey="id_produit">
+      <Table name="dim_produit"/>
+      <Level name="Categorie" column="nom_categorie" uniqueMembers="true"/>
+      <Level name="Marque" column="marque" uniqueMembers="false"/>
+      <Level name="Produit" column="id_produit" type="Numeric" uniqueMembers="true" captionColumn="nom"/>
+    </Hierarchy>
+  </Dimension>
+  <Dimension type="StandardDimension" visible="true" name="transport">
+    <Hierarchy name="Transport" visible="true" hasAll="true" primaryKey="id_transport">
+      <Table name="dim_transport"/>
+      <Level name="Transporteur" column="transporteur" uniqueMembers="false"/>
+      <Level name="Mode" column="mode_livraison" uniqueMembers="false"/>
+    </Hierarchy>
+  </Dimension>
+  <Dimension type="StandardDimension" visible="true" name="promotions">
+    <Hierarchy name="Offres" visible="true" hasAll="true" primaryKey="id_promo">
+      <Table name="dim_promotion"/>
+      <Level name="CodePromotion" column="code" uniqueMembers="true"/>
+      <Level name="TauxReduction" column="reduction_pct" type="Numeric" uniqueMembers="false"/>
+    </Hierarchy>
+  </Dimension>
+  <Dimension type="StandardDimension" visible="true" name="appareils">
+    <Hierarchy name="NavigateurSysteme" visible="true" hasAll="true" primaryKey="id_appareil">
+      <Table name="dim_appareil"/>
+      <Level name="Navigateur" column="navigateur" uniqueMembers="false"/>
+      <Level name="SystemeExploitation" column="systeme_exploitation" uniqueMembers="true"/>
+    </Hierarchy>
+  </Dimension>
+  <Dimension type="StandardDimension" visible="true" name="geographie">
+    <Hierarchy name="Localisation" visible="true" hasAll="true" primaryKey="id_geographie">
+      <Table name="dim_geographie"/>
+      <Level name="Pays" column="pays" uniqueMembers="true"/>
+      <Level name="Region" column="region" uniqueMembers="false"/>
+      <Level name="Ville" column="ville" uniqueMembers="false"/>
+    </Hierarchy>
+  </Dimension>
+
+  <Cube name="Ventes" visible="true" cache="true" enabled="true">
+    <Table name="faits_ventes"/>
+    <DimensionUsage source="date" name="date" foreignKey="id_temps"/>
+    <DimensionUsage source="clients" name="client" foreignKey="id_utilisateur"/>
+    <DimensionUsage source="produits" name="produit" foreignKey="id_produit"/>
+    <DimensionUsage source="geographie" name="geographie" foreignKey="id_geographie"/>
+    <DimensionUsage source="transport" name="transport" foreignKey="id_transport"/>
+    <DimensionUsage source="promotions" name="promotion" foreignKey="id_promo"/>
+    <Measure name="ChiffreAffaires" column="total1" aggregator="sum" formatString="#,##0.00"/>
+    <Measure name="QuantitesVendues" column="quantite" aggregator="sum" formatString="#,##0"/>
+    <Measure name="Commandes" column="id_commande" aggregator="distinct-count" formatString="#,##0"/>
+    <CalculatedMember name="PanierMoyen" dimension="Measures" formula="[Measures].[ChiffreAffaires] / [Measures].[Commandes]" formatString="#,##0.00"/>
+  </Cube>
+
+  <Cube name="Stocks" visible="true" cache="true" enabled="true">
+    <Table name="faits_stock"/>
+    <DimensionUsage source="date" name="date" foreignKey="id_date"/>
+    <DimensionUsage source="produits" name="produit" foreignKey="id_produit"/>
+    <Measure name="UnitesEnStock" column="quantite_stock" aggregator="sum" formatString="#,##0"/>
+    <Measure name="ValeurDuStock" column="valeur_stock" aggregator="sum" formatString="#,##0.00"/>
+    <Measure name="ProduitsEnRupture" column="en_rupture" aggregator="sum" formatString="#,##0"/>
+  </Cube>
+
+  <Cube name="TraficWeb" visible="true" cache="true" enabled="true">
+    <Table name="faits_trafic_web"/>
+    <DimensionUsage source="date" name="date" foreignKey="id_date"/>
+    <DimensionUsage source="clients" name="client" foreignKey="id_utilisateur"/>
+    <DimensionUsage source="geographie" name="geographie" foreignKey="id_geographie"/>
+    <Measure name="PagesVues" column="nombre_vues" aggregator="sum" formatString="#,##0"/>
+    <Measure name="DureeTotaleSecondes" column="duree_seconde" aggregator="sum" formatString="#,##0"/>
+    <Measure name="DureeMoyenneSecondes" column="duree_seconde" aggregator="avg" formatString="#,##0.0"/>
+  </Cube>
+
+  <Cube name="Connexions" visible="true" cache="true" enabled="true">
+    <Table name="faits_connexions"/>
+    <DimensionUsage source="date" name="date" foreignKey="id_date"/>
+    <DimensionUsage source="clients" name="client" foreignKey="id_utilisateur"/>
+    <DimensionUsage source="geographie" name="geographie" foreignKey="id_geographie"/>
+    <DimensionUsage source="appareils" name="appareil" foreignKey="id_appareil"/>
+    <Measure name="NombreConnexions" column="nombre_connexions" aggregator="sum" formatString="#,##0"/>
+  </Cube>
+
+  <Cube name="Satisfaction" visible="true" cache="true" enabled="true">
+    <Table name="faits_avis"/>
+    <DimensionUsage source="date" name="date" foreignKey="id_date"/>
+    <DimensionUsage source="clients" name="client" foreignKey="id_utilisateur"/>
+    <DimensionUsage source="produits" name="produit" foreignKey="id_produit"/>
+    <DimensionUsage source="geographie" name="geographie" foreignKey="id_geographie"/>
+    <Measure name="NoteMoyenne" column="note" aggregator="avg" formatString="0.00"/>
+    <Measure name="NombreAvis" column="id_avis" aggregator="count" formatString="#,##0"/>
+  </Cube>
+
+  <Cube name="Retours" visible="true" cache="true" enabled="true">
+    <Table name="faits_retours"/>
+    <DimensionUsage source="date" name="date" foreignKey="id_date"/>
+    <DimensionUsage source="clients" name="client" foreignKey="id_utilisateur"/>
+    <DimensionUsage source="produits" name="produit" foreignKey="id_produit"/>
+    <DimensionUsage source="geographie" name="geographie" foreignKey="id_geographie"/>
+    <Measure name="NombreRetours" column="id_retour" aggregator="count" formatString="#,##0"/>
+    <Measure name="QuantitesRetournees" column="quantite_retour" aggregator="sum" formatString="#,##0"/>
+  </Cube>
+
+  <Cube name="Paiements" visible="true" cache="true" enabled="true">
+    <Table name="faits_paiements"/>
+    <DimensionUsage source="date" name="date" foreignKey="id_date"/>
+    <DimensionUsage source="clients" name="client" foreignKey="id_utilisateur"/>
+    <DimensionUsage source="geographie" name="geographie" foreignKey="id_geographie"/>
+    <Measure name="MontantPaye" column="montant" aggregator="sum" formatString="#,##0.00"/>
+    <Measure name="NombrePaiements" column="id_paiement" aggregator="count" formatString="#,##0"/>
+  </Cube>
+
+  <Cube name="Livraisons" visible="true" cache="true" enabled="true">
+    <Table name="faits_livraisons"/>
+    <DimensionUsage source="date" name="date" foreignKey="id_date"/>
+    <DimensionUsage source="clients" name="client" foreignKey="id_utilisateur"/>
+    <DimensionUsage source="geographie" name="geographie" foreignKey="id_geographie"/>
+    <DimensionUsage source="transport" name="transport" foreignKey="id_transport"/>
+    <Measure name="CoutLivraison" column="cout_livraison" aggregator="sum" formatString="#,##0.00"/>
+    <Measure name="DelaiMoyenJours" column="delai_jours" aggregator="avg" formatString="0.0"/>
+    <Measure name="LivraisonsEnRetard" column="en_retard" aggregator="sum" formatString="#,##0"/>
+  </Cube>
+</Schema>
